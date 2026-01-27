@@ -1,0 +1,15 @@
+---
+- name: Automate Workbench Installation
+  hosts: localhost
+  connection: local
+
+  roles:
+    - base
+    - shell
+    - version_managers
+    - containerization
+    - cloud_k8s
+    - languages
+    - editors
+    # - databases (To be implemented)
+    # - tools (To be implemented)

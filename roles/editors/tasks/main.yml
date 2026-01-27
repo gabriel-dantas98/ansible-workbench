@@ -1,0 +1,106 @@
+---
+- name: Ensure local bin directory exists
+  file:
+    path: "{{ user_home }}/.local/bin"
+    state: directory
+    mode: '0755'
+
+- name: Ensure apt keyrings directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Add VS Code GPG key
+  apt_key:
+    url: https://packages.microsoft.com/keys/microsoft.asc
+    state: present
+  become: yes
+
+- name: Add VS Code repository
+  apt_repository:
+    repo: "deb [arch=amd64,arm64,armhf] https://packages.microsoft.com/repos/code stable main"
+    state: present
+  become: yes
+
+- name: Install VS Code
+  apt:
+    name: code
+    state: present
+  become: yes
+
+- name: Download and Install Cursor IDE (.deb)
+  apt:
+    deb: https://api2.cursor.sh/updates/download/golden/linux-x64-deb/cursor/2.4
+  become: yes
+  ignore_errors: yes
+
+- name: Download Antigravity IDE
+  get_url:
+    url: https://antigravity.google/download/linux
+    dest: /tmp/antigravity.tar.gz
+    mode: '0644'
+  register: antigravity_download
+  ignore_errors: yes
+
+- name: Extract Antigravity IDE
+  unarchive:
+    src: /tmp/antigravity.tar.gz
+    dest: "{{ user_home }}/.local/bin"
+    remote_src: yes
+  when: antigravity_download is success
+  ignore_errors: yes
+
+- name: Add Spotify GPG key (modern)
+  shell: |
+    curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg | gpg --dearmor --yes -o /etc/apt/keyrings/spotify.gpg
+  become: yes
+  ignore_errors: yes
+
+- name: Add Spotify repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/spotify.gpg] http://repository.spotify.com stable non-free"
+    state: present
+  become: yes
+
+- name: Install Spotify
+  apt:
+    name: spotify-client
+    state: present
+  become: yes
+  ignore_errors: yes
+
+- name: Add DBeaver GPG key
+  apt_key:
+    url: https://dbeaver.io/debs/dbeaver.gpg.key
+    state: present
+  become: yes
+  ignore_errors: yes
+
+- name: Add DBeaver repository
+  apt_repository:
+    repo: "deb https://dbeaver.io/debs/dbeaver-ce /"
+    state: present
+  become: yes
+  ignore_errors: yes
+
+- name: Install DBeaver
+  apt:
+    name: dbeaver-ce
+    state: present
+  become: yes
+  ignore_errors: yes
+
+- name: Download Comet Browser
+  shell: |
+    curl -kL https://comet.vg/download/linux/deb -o /tmp/comet.deb
+  args:
+    creates: /tmp/comet.deb
+  ignore_errors: yes
+
+- name: Install Comet Browser
+  apt:
+    deb: /tmp/comet.deb
+  become: yes
+  ignore_errors: yes

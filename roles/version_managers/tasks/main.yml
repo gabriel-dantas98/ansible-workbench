@@ -1,0 +1,34 @@
+---
+- name: Install NVM
+  shell: >
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+  args:
+    creates: "{{ user_home }}/.nvm/nvm.sh"
+
+- name: Install Pyenv
+  shell: curl https://pyenv.run | bash
+  args:
+    creates: "{{ user_home }}/.pyenv/bin/pyenv"
+
+- name: Install Rbenv
+  git:
+    repo: https://github.com/rbenv/rbenv.git
+    dest: "{{ user_home }}/.rbenv"
+    depth: 1
+
+- name: Install ASDF
+  git:
+    repo: https://github.com/asdf-vm/asdf.git
+    dest: "{{ user_home }}/.asdf"
+    version: v0.16.5
+
+- name: Install SDKMAN
+  shell: curl -s "https://get.sdkman.io" | bash
+  args:
+    creates: "{{ user_home }}/.sdkman/bin/sdkman-init.sh"
+    executable: /bin/bash
+
+- name: Install Poetry
+  shell: curl -sSL https://install.python-poetry.org | python3 -
+  args:
+    creates: "{{ user_home }}/.local/bin/poetry"

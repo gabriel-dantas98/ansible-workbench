@@ -1,0 +1,61 @@
+---
+- name: Add HashiCorp GPG key
+  apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+    state: present
+  become: yes
+
+- name: Add HashiCorp repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    state: present
+  become: yes
+
+- name: Install Terraform
+  apt:
+    name: terraform
+    state: present
+  become: yes
+
+- name: Download kubectl
+  get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+  become: yes
+
+- name: Install Helm
+  shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+  become: yes
+
+- name: Install AWS CLI
+  shell: |
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip -o awscliv2.zip
+    sudo ./aws/install --update
+    rm -rf aws awscliv2.zip
+  args:
+    creates: /usr/local/bin/aws
+
+- name: Install GitHub CLI
+  apt:
+    name: gh
+    state: present
+  become: yes
+
+- name: Install k9s
+  shell: |
+    curl -L https://github.com/derailed/k9s/releases/download/{{ k9s_version }}/k9s_Linux_amd64.tar.gz | tar xz
+    sudo mv k9s /usr/local/bin/
+  args:
+    creates: /usr/local/bin/k9s
+  become: yes
+
+- name: Install kind
+  get_url:
+    url: "https://kind.sigs.k8s.io/dl/{{ kind_version }}/kind-linux-amd64"
+    dest: /usr/local/bin/kind
+    mode: '0755'
+  become: yes

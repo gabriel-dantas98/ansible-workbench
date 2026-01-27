@@ -1,0 +1,56 @@
+---
+- name: Install Node.js via NVM
+  shell: |
+    export NVM_DIR="{{ nvm_dir }}"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm install {{ node_version }}
+    nvm alias default {{ node_version }}
+  args:
+    executable: /bin/bash
+    creates: "{{ nvm_dir }}/versions/node/v{{ node_version }}"
+
+- name: Install Corepack and Yarn
+  shell: |
+    export NVM_DIR="{{ nvm_dir }}"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    npm install -g corepack@0.34.0
+    corepack enable
+  args:
+    executable: /bin/bash
+  when: node_version is defined
+
+- name: Install Python via Pyenv
+  shell: |
+    export PYENV_ROOT="{{ pyenv_root }}"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+    pyenv install -s {{ python_version }}
+    pyenv global {{ python_version }}
+    pyenv rehash
+  args:
+    executable: /bin/bash
+    creates: "{{ pyenv_root }}/versions/{{ python_version }}"
+
+- name: Install Go
+  apt:
+    name: golang-go
+    state: present
+  become: yes
+
+- name: Install Bun
+  shell: curl -fsSL https://bun.sh/install | bash
+  args:
+    creates: "{{ user_home }}/.bun/bin/bun"
+
+- name: Install PDM via pipx
+  shell: pipx install pdm
+  args:
+    creates: "{{ user_home }}/.local/bin/pdm"
+
+- name: Install global npm packages
+  shell: |
+    export NVM_DIR="{{ nvm_dir }}"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    npm install -g --force @openai/codex@0.80.0 pnpm
+  args:
+    executable: /bin/bash
