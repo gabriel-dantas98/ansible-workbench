@@ -10,11 +10,20 @@ Automate your development environment setup with Ansible. This playbook sets up 
 
 ## Installation
 
-1. **Clone the repository:**
+1. **Get the code:**
 
+   **Option A: Clone with Git (Recommended)**
    ```bash
    git clone https://github.com/gabriel-dantas98/ansible-workbench.git
    cd ansible-workbench
+   ```
+
+   **Option B: Download without Git**
+   
+   If you don't have git installed yet, run this one-liner to download and extract the latest version:
+   ```bash
+   curl -L https://github.com/gabriel-dantas98/ansible-workbench/archive/master.tar.gz | tar xz
+   cd ansible-workbench-master
    ```
 
 2. **Run the setup script:**
