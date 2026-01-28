@@ -54,3 +54,19 @@ Automate your development environment setup with Ansible. This playbook sets up 
 
 - **Inventory**: Modify `inventory.ini` to change target hosts (default: `localhost`).
 - **Variables**: adjust `group_vars/all.yml` or role-specific variables in `roles/<role>/defaults/main.yml`.
+
+## Verification
+
+To verify your installation, you can run the following commands:
+
+- **Shell**: `zsh --version`
+- **Docker**: `docker --version`
+- **Kubernetes**: `kubectl version --client` and `k9s version`
+- **Languages**: 
+  - Go: `go version`
+  - Node: `node --version` (requires new terminal or `source ~/.zshrc`)
+  - Python: `python3 --version` (via pyenv)
+- **Tools**:
+  - Discord: `discord --version`
+  - Spotify: `spotify --version`
+  - VS Code: `code --version`
