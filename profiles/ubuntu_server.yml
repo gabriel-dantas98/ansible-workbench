@@ -15,4 +15,4 @@ workbench_packages:
   - tmux
   - unzip
   - vim-tiny
-workbench_commands: [curl, git, git-lfs, jq, python3, rg, rsync, shellcheck, tmux, unzip, vim]
+workbench_commands: [curl, git, git-lfs, jq, python3, rg, rsync, shellcheck, tmux, unzip, vi]

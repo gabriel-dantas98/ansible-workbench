@@ -12,4 +12,4 @@
           - lookup('ansible.builtin.env', 'GITHUB_ACTIONS') == 'true'
           - ansible_facts.service_mgr == 'systemd'
   roles:
-    - role: ../roles/always_on
+    - role: always_on

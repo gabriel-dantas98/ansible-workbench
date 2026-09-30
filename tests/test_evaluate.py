@@ -40,6 +40,16 @@ class EvaluationTests(unittest.TestCase):
         with patch.object(self.module, 'run', side_effect=[subprocess.CompletedProcess([], 0, s, '') for s in outputs]):
             self.assertEqual(self.module.tailscale_checks()[1]['status'], 'fail')
 
+    def test_tailscale_daemon_mismatch_is_failure(self):
+        completed = subprocess.CompletedProcess([], 0, 'Client: 1.102.4\nDaemon: 1.100.0\n', '')
+        with patch.object(self.module, 'run', return_value=completed):
+            self.assertEqual(self.module.tailscale_daemon_check()['status'], 'fail')
+
+    def test_tailscale_daemon_match_passes(self):
+        completed = subprocess.CompletedProcess([], 0, 'Client: 1.102.4\nDaemon: 1.102.4\n', '')
+        with patch.object(self.module, 'run', return_value=completed):
+            self.assertEqual(self.module.tailscale_daemon_check()['status'], 'pass')
+
     def test_evaluator_exists(self):
         self.assertTrue(SCRIPT.exists(), 'read-only profile evaluator is missing')
 
