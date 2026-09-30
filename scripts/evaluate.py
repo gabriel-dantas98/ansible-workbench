@@ -147,6 +147,20 @@ def tailscale_checks():
     return checks
 
 
+def tailscale_daemon_check(socket=None):
+    argv = ['tailscale']
+    if socket:
+        argv.append('--socket=' + socket)
+    try:
+        completed = run(argv + ['version', '--daemon'])
+        client = re.search(r'^Client: ([0-9]+\.[0-9]+\.[0-9]+)', completed.stdout, re.MULTILINE)
+        daemon = re.search(r'^Daemon: ([0-9]+\.[0-9]+\.[0-9]+)', completed.stdout, re.MULTILINE)
+        return result('tailscale_daemon_version', completed.returncode == 0 and client is not None
+                      and daemon is not None and client.group(1) == daemon.group(1))
+    except (OSError, subprocess.TimeoutExpired):
+        return result('tailscale_daemon_version', False)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', required=True, choices=['ubuntu_server', 'omarchy_desktop', 'macos'])
@@ -216,6 +230,10 @@ def main():
         checks.append(result('docker_group_membership', member))
     if args.profile == 'omarchy_desktop':
         checks.extend(tailscale_checks())
+        if args.services:
+            checks.append(tailscale_daemon_check())
+        else:
+            checks.append({'name': 'tailscale_daemon_version', 'status': 'skip'})
     if args.always_on:
         checks.extend(always_on_checks(args.services))
     print(json.dumps({'profile': args.profile, 'checks': checks}, sort_keys=True))

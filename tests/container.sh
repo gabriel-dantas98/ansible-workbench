@@ -55,12 +55,14 @@ grep -Eq 'changed=0 .*failed=0' artifacts/check-after.log
 ansible-playbook -i artifacts/inventory.yml validate.yml | tee artifacts/evaluation.log
 if [[ $profile == omarchy_desktop ]]; then
   # Exercise the real daemon without a TUN device, host privileges or tailnet auth.
+  docker cp scripts/evaluate.py "$container":/tmp/workbench-evaluate.py
   docker exec --detach "$container" tailscaled --tun=userspace-networking --state=mem: --socket=/tmp/workbench-tailscaled.sock
   for _attempt in {1..20}; do
     if docker exec "$container" test -S /tmp/workbench-tailscaled.sock; then break; fi
     sleep 1
   done
   docker exec "$container" python3 -c 'import json,subprocess; p=subprocess.run(["tailscale","--socket=/tmp/workbench-tailscaled.sock","status","--json"],capture_output=True,text=True); s=json.loads(p.stdout); assert s["BackendState"] == "NeedsLogin"; print("Tailscale daemon operational; authentication pending")'
+  docker exec "$container" python3 -c 'import runpy; m=runpy.run_path("/tmp/workbench-evaluate.py"); check=m["tailscale_daemon_check"]("/tmp/workbench-tailscaled.sock"); print(check); assert check["status"] == "pass"'
 fi
 # Power policy must be reversible, and disabling it must not rewrite desktop files.
 ansible-playbook -i artifacts/inventory.yml site.yml -e '{"workbench_always_on": false}' | tee artifacts/power-disable.log
