@@ -27,6 +27,8 @@ else
   # This is an Arch package fixture, NOT an Omarchy desktop/hardware test.
   docker exec "$container" sh -c 'pacman -Syu --noconfirm --needed python sudo git jq ripgrep tmux neovim mise docker docker-compose docker-buildx'
   docker exec "$container" sh -c 'mkdir -p /usr/share/omarchy/bin; printf "fixture only\n" > /usr/share/omarchy/bin/omarchy-version'
+  # Exercise the new distro ID while retaining Arch packaging facts; still a fixture.
+  docker exec "$container" sed -i 's/^ID=arch$/ID=omarchy/' /etc/os-release
 fi
 docker exec "$container" useradd -m -s /bin/bash homelabtest
 # Preserve representative user files byte-for-byte through both applies.

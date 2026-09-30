@@ -61,6 +61,12 @@ class EvaluationTests(unittest.TestCase):
                 checks = self.module.docker_client_checks('macos')
             self.assertTrue(all(check['status'] == 'pass' for check in checks))
 
+    def test_omarchy_four_has_its_own_distribution_id(self):
+        self.assertTrue(self.module.platform_matches('omarchy_desktop', 'omarchy'))
+        self.assertTrue(self.module.platform_matches('omarchy_desktop', 'arch'))
+        self.assertFalse(self.module.platform_matches('omarchy_desktop', 'ubuntu'))
+        self.assertFalse(self.module.platform_matches('ubuntu_server', 'omarchy'))
+
     def test_evaluator_exists(self):
         self.assertTrue(SCRIPT.exists(), 'read-only profile evaluator is missing')
 
