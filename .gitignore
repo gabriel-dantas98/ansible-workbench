@@ -7,3 +7,6 @@ __pycache__/
 validation_report.md
 inventories/private*
 artifacts/
+*.iso
+*.img
+*.qcow2

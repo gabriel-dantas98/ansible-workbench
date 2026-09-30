@@ -10,6 +10,8 @@ Provisionamento explícito por perfil, com avaliação funcional separada. O con
 
 Ambos os perfis Linux têm **always-on habilitado**: não suspendem nem hibernam através de systemd. Bloqueio de tela, screensaver, monitor, shutdown e reboot deliberados continuam sob a configuração existente. Veja [política 24/7](docs/always-on.md).
 
+O procedimento de mídia oficial, checksum, instalação interativa e provisionamento está versionado em [bootstrap Omarchy](docs/bootstrap-omarchy.md).
+
 ## Bootstrap das máquinas novas
 
 1. Nas duas máquinas, conclua a instalação e atualização pelo fluxo próprio do Omarchy, com um usuário que tenha sudo. Para optar pelo Ubuntu Server, altere somente esse host para `workbench_profile: ubuntu_server` e habilite OpenSSH no instalador.

@@ -1,0 +1,12 @@
+{
+  "distribution": "Omarchy",
+  "version": "4.0.4",
+  "architecture": "x86_64",
+  "url": "https://iso.omarchy.org/omarchy-4.0.4.iso",
+  "size_bytes": 6185304064,
+  "sha256": "ddeded2758c48318d201dfdac905ecb28f570441883f0c052ea3cd5d05acf92d",
+  "customized": false,
+  "unattended_configuration": false,
+  "media_verification": "Full ISO read from Ventoy matched SHA256; reported by the media preparation workflow on 2026-09-30",
+  "boot_verification": "QEMU 11.0.2, x86_64 UEFI under TCG on arm64 Mac: EFI loader started only; graphical installer and physical Ventoy boot not verified"
+}
