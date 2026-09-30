@@ -1,0 +1,9 @@
+.ansible/
+.ansible-home/
+venv/
+.venv/
+__pycache__/
+*.pyc
+validation_report.md
+inventories/private*
+artifacts/

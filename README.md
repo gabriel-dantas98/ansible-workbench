@@ -1,72 +1,72 @@
 # Ansible Workbench
 
-Automate your development environment setup with Ansible. This playbook sets up a comprehensive workbench including shell configurations, version managers, container tools, Kubernetes utilities, programming languages, and editors.
+Provisionamento explícito por perfil, com avaliação funcional separada. O controlador pode ser o Mac; as instalações Linux acontecem por SSH nos alvos. Nenhum host é selecionado pelo inventário padrão. O inventário de exemplo prepara **dois Omarchy 24/7**: EliteDesk e desktop GPU; Ubuntu Server permanece como alternativa suportada.
 
-## Prerequisites
+| Perfil | Escopo |
+| --- | --- |
+| `ubuntu_server` | Ubuntu 24.04/26.04, utilitários mínimos, SSH, Docker Engine + Compose/Buildx opcional; sem GUI |
+| `omarchy_desktop` | Omarchy já instalado sobre Arch; acrescenta git-lfs, ShellCheck, uv e GitHub CLI, preservando desktop, shell, Neovim, mise e Docker existentes |
+| `macos` | Fórmulas e casks pessoais via Homebrew, sem sobrescrever dotfiles, iniciar VM automaticamente ou instalar runtimes por scripts remotos |
 
-- **Operating System**: Linux (Ubuntu/Debian, Arch, Fedora supported)
-- **Python**: Python 3 must be installed.
-- **Git**: Required to clone the repository.
+Ambos os perfis Linux têm **always-on habilitado**: não suspendem nem hibernam através de systemd. Bloqueio de tela, screensaver, monitor, shutdown e reboot deliberados continuam sob a configuração existente. Veja [política 24/7](docs/always-on.md).
 
-## Installation
+## Bootstrap das máquinas novas
 
-1. **Get the code:**
+1. Nas duas máquinas, conclua a instalação e atualização pelo fluxo próprio do Omarchy, com um usuário que tenha sudo. Para optar pelo Ubuntu Server, altere somente esse host para `workbench_profile: ubuntu_server` e habilite OpenSSH no instalador.
+2. No console Ubuntu, caso falte: `sudo apt update && sudo apt install python3 openssh-server sudo`; depois `sudo systemctl enable --now ssh`.
+3. No console Omarchy, caso falte: `sudo pacman -Syu --needed python openssh sudo`; depois `sudo systemctl enable --now sshd`. A atualização completa evita partial upgrades de Arch.
+4. Instale **sua chave pública** no `authorized_keys` do usuário remoto. Confira a impressão digital SSH no console da máquina antes de aceitar a conexão. Não envie chaves privadas ao repositório.
+5. Confirme `ssh usuario@IP` e `sudo -v` no alvo. Os playbooks exigem um usuário existente; não inferem o usuário/home do Mac.
 
-   **Option A: Clone with Git (Recommended)**
-   ```bash
-   git clone https://github.com/gabriel-dantas98/ansible-workbench.git
-   cd ansible-workbench
-   ```
+No controlador, use Ansible Core 2.20.x (Python 3.12+) e as collections de `requirements.yml`. Se não estiverem disponíveis, prepare um ambiente isolado no controlador conscientemente; `setup.sh` nunca instala dependências. A implementação foi testada em CI com Core 2.20.3.
 
-   **Option B: Download without Git**
-   
-   If you don't have git installed yet, run this one-liner to download and extract the latest version:
-   ```bash
-   curl -L https://github.com/gabriel-dantas98/ansible-workbench/archive/master.tar.gz | tar xz
-   cd ansible-workbench-master
-   ```
+```bash
+ansible-galaxy collection install -r requirements.yml
+cp inventories/homelab.example.yml inventories/private.yml
+# Edite IPs, ansible_user e workbench_user. Não coloque senhas/tokens no arquivo.
+ansible-inventory -i inventories/private.yml --graph
+ansible-playbook -i inventories/private.yml site.yml --limit elitedesk --check -K
+ansible-playbook -i inventories/private.yml site.yml --limit elitedesk -K
+ansible-playbook -i inventories/private.yml validate.yml --limit elitedesk -K
+# Depois repita --limit gpu_desktop.
+```
 
-2. **Run the setup script:**
+`setup.sh INVENTORY HOST [opções]` é apenas um wrapper da execução explícita. Não aplica no localhost por padrão. O inventário de exemplo usa nomes de IP inválidos intencionais até serem preenchidos.
 
-   We provide a helper script to check dependencies and run the playbook:
+## Configuração
 
-   ```bash
-   ./setup.sh
-   ```
+Variáveis no inventário privado por host:
 
-   Alternatively, you can run Ansible directly if installed:
+| Variável | Default | Efeito |
+| --- | --- | --- |
+| `workbench_profile` | obrigatório | Seleciona um dos três perfis |
+| `workbench_user` | obrigatório | Conta existente no alvo; home consultado via banco local de usuários |
+| `workbench_manage_docker` | `true` | Ubuntu instala Engine; macOS instala clientes; Omarchy só verifica a base existente |
+| `workbench_docker_group` | `false` | Ubuntu: concede ao usuário acesso equivalente a root pelo socket Docker; exige novo login |
+| `workbench_manage_services` | `true` | Linux exige systemd e valida serviços; `false` é apenas teste de pacotes/container, sem garantia operacional |
+| `workbench_always_on` | `true` | Linux: bloqueia sleep; `false` remove somente os dois drop-ins deste projeto |
+| `workbench_extra_packages` | `[]` | Pacotes adicionais explícitos do gerenciador de cada perfil |
+| `workbench_allow_local_macos` | `false` | Exigido para aplicar o perfil macOS com conexão local |
+| `workbench_macos_start_colima` | `false` | Opt-in para iniciar a VM; não aplicado ao Mac durante este desenvolvimento |
 
-   ```bash
-   ansible-playbook site.yml --ask-become-pass
-   ```
+Pacotes ficam em `profiles/`. State `present` não atualiza indiscriminadamente o sistema nem fixa versões antigas do Mac. A versão disponível vem do repositório assinado da distribuição/Homebrew. Não há mais variáveis de versão que pareçam ser respeitadas mas sejam ignoradas.
 
-## Roles Included
+Node, Python de projeto, Ruby, Java e outros runtimes devem ser fixados **por projeto**, usando o mise já presente no Omarchy ou o gerenciador escolhido. Este bootstrap não altera NVM/pyenv/rbenv existentes no Mac, não clona ASDF incompleto e não instala seis gerenciadores simultaneamente. CLIs cloud/IA adicionais e SDKs entram depois por necessidade, com versão, origem e teste definidos; não importamos as 197 dependências do Mac.
 
-- **base**: Essential system packages (curl, wget, build-essential).
-- **shell**: Zsh, Oh-My-Zsh, and plugins.
-- **version_managers**: asdf / rtx for managing tool versions.
-- **containerization**: Docker and Podman.
-- **cloud_k8s**: kubectl, k9s, helm, AWS CLI, Google Cloud SDK.
-- **languages**: Go, Rust, Node.js, Python environment.
-- **editors**: VS Code and Neovim configurations.
+O Docker Ubuntu vem do repositório oficial com chave restrita por `Signed-By`, arquitetura detectada e plugins Compose/Buildx. Pacotes de engines conflitantes causam falha explícita; não são removidos automaticamente. A configuração de firewall/exposição de portas requer desenho dos serviços: portas publicadas pelo Docker precisam de política apropriada, não basta supor que UFW as bloqueia.
 
-## Customization
+## Avaliação e limites
 
-- **Inventory**: Modify `inventory.ini` to change target hosts (default: `localhost`).
-- **Variables**: adjust `group_vars/all.yml` or role-specific variables in `roles/<role>/defaults/main.yml`.
+`validate.yml` executa `scripts/evaluate.py` no alvo, sem instalar pacotes nem editar configurações. Ansible ainda usa arquivos temporários para transportar módulos/scripts. O relatório JSON vai ao stdout e contém apenas nomes dos checks e `pass`/`fail`/`skip`; não lista containers, kubecontexts, variáveis de ambiente ou conteúdo de configs pessoais.
 
-## Verification
+Valida plataforma, conta/home, pacotes, comandos, ausência de payloads GUI conhecidos no servidor, Compose/Buildx, serviços quando habilitados, engine local e política 24/7. Qualquer falha retorna código não zero. Não verifica todas as dependências transitivas, aplicações web, workloads ou extensões de IDE. A detecção de GUI é uma lista explícita, não uma prova de ausência de qualquer software gráfico.
 
-To verify your installation, you can run the following commands:
+No primeiro `--check`, a instalação Docker pode ser adiada porque seu repositório ainda não existe. Check-mode não instala e **não comprova funcionamento**. `site.yml` só faz avaliação final depois de apply; rode `validate.yml` separadamente quando quiser avaliar o estado atual.
 
-- **Shell**: `zsh --version`
-- **Docker**: `docker --version`
-- **Kubernetes**: `kubectl version --client` and `k9s version`
-- **Languages**: 
-  - Go: `go version`
-  - Node: `node --version` (requires new terminal or `source ~/.zshrc`)
-  - Python: `python3 --version` (via pyenv)
-- **Tools**:
-  - Discord: `discord --version`
-  - Spotify: `spotify --version`
-  - VS Code: `code --version`
+CI verifica YAML/Ansible/shell, testes unitários e containers descartáveis Ubuntu 24.04, Ubuntu 26.04 e Arch: check inicial, instalação real, segunda execução com `changed=0`, check posterior, avaliação, remoção/restauração de always-on e injeção de drift. O fixture Arch apenas representa pré-requisitos já fornecidos pelo Omarchy. **Não é uma instalação Omarchy completa.** Containers sem systemd PID 1 validam pacotes e configuração efetiva em disco; não hardware, boot, D-Bus logind, GPU ou sessão gráfica.
+
+Após acesso às máquinas reais: avaliar com serviços habilitados, conferir SSH após reinício autorizado, manter uma sessão remota durante um período superior ao timeout de idle e confirmar tela bloqueada/apagada com host acessível. Não executar suspensão como teste remoto. Modelo GPU, drivers, CUDA/ROCm e workloads serão decididos após identificação do hardware.
+
+## Histórico da auditoria
+
+Veja [auditoria e escopo](docs/audit-2026-09-30.md) e [decisões de implementação](docs/design.md). As alterações do checkout original foram preservadas; o PR incorpora explicitamente sua seleção macOS e a separação por plataforma, substituindo os instaladores inseguros por perfis.

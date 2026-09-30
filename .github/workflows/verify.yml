@@ -1,0 +1,51 @@
+---
+name: Verify homelab profiles
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install controller test dependencies on the runner only
+        run: |
+          pip install 'ansible-core==2.20.3' 'ansible-lint>=26,<27' 'yamllint>=1.35,<2'
+          ansible-galaxy collection install -r requirements.yml
+      - name: Static and behavioral checks
+        run: |
+          python -m unittest discover -s tests -v
+          yamllint .
+          ansible-lint
+          shellcheck setup.sh tests/container.sh
+          ansible-playbook site.yml --syntax-check
+          ansible-playbook validate.yml --syntax-check
+  containers:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ubuntu24, ubuntu26, arch]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install controller test dependencies on the runner only
+        run: |
+          pip install 'ansible-core==2.20.3'
+          ansible-galaxy collection install -r requirements.yml
+      - name: Real package install, repeat run, check mode and drift detection
+        run: bash tests/container.sh '${{ matrix.target }}'
+      - name: Preserve sanitized test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ matrix.target }}
+          path: artifacts/*.log

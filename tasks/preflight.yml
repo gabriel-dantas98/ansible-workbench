@@ -1,0 +1,69 @@
+---
+- name: Require an explicit supported profile and existing target user
+  ansible.builtin.assert:
+    that:
+      - workbench_profile | default('') in ['ubuntu_server', 'omarchy_desktop', 'macos']
+      - workbench_user | default('') is match('^[a-z_][a-z0-9_-]*[$]?$')
+      - workbench_user | default('root') != 'root'
+    fail_msg: Set workbench_profile and workbench_user in your private inventory.
+
+- name: Reject incompatible operating systems before any installation
+  ansible.builtin.assert:
+    that:
+      - >-
+        (workbench_profile == 'ubuntu_server' and ansible_facts.distribution == 'Ubuntu'
+         and ansible_facts.distribution_version in ['24.04', '26.04']) or
+        (workbench_profile == 'omarchy_desktop' and ansible_facts.os_family == 'Archlinux') or
+        (workbench_profile == 'macos' and ansible_facts.system == 'Darwin')
+      - >-
+        workbench_profile != 'macos' or
+        ansible_connection | default('ssh') != 'local' or workbench_allow_local_macos | bool
+    fail_msg: Unsupported profile/OS, or local macOS not explicitly allowed.
+
+- name: Resolve target user through the target Python account database
+  ansible.builtin.command:
+    argv:
+      - '{{ ansible_facts.python.executable }}'
+      - -c
+      - 'import pwd,sys; print(pwd.getpwnam(sys.argv[1]).pw_dir)'
+      - '{{ workbench_user }}'
+  register: workbench_account
+  changed_when: false
+  check_mode: false
+
+- name: Use the target account home
+  ansible.builtin.set_fact:
+    workbench_home: '{{ workbench_account.stdout | trim }}'
+
+- name: Require an absolute non-root target home
+  ansible.builtin.assert:
+    that:
+      - workbench_home is match('^/[^\s]+$')
+      - workbench_home not in ['/', '/root']
+
+- name: Require systemd when managing Linux services
+  ansible.builtin.assert:
+    that: ansible_facts.service_mgr == 'systemd'
+    fail_msg: Set workbench_manage_services=false only for container/package-only tests.
+  when:
+    - workbench_profile != 'macos'
+    - workbench_manage_services | bool
+
+- name: Check that Omarchy is already installed
+  ansible.builtin.stat:
+    path: '{{ item }}'
+  loop:
+    - /usr/share/omarchy/bin/omarchy-version
+    - '{{ workbench_home }}/.local/share/omarchy/bin/omarchy-version'
+  register: workbench_omarchy
+  when: workbench_profile == 'omarchy_desktop'
+
+- name: Refuse to treat plain Arch as an installed Omarchy desktop
+  ansible.builtin.assert:
+    that: workbench_omarchy.results | selectattr('stat.exists') | list | length > 0
+    fail_msg: Install Omarchy first; this profile only complements its installation.
+  when: workbench_profile == 'omarchy_desktop'
+
+- name: Load package policy for the selected profile
+  ansible.builtin.include_vars:
+    file: '{{ playbook_dir }}/profiles/{{ workbench_profile }}.yml'

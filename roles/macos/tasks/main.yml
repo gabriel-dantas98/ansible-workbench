@@ -1,0 +1,42 @@
+---
+- name: Install Homebrew formulae without upgrading existing packages
+  community.general.homebrew:
+    name: '{{ workbench_packages + workbench_extra_packages }}'
+    state: present
+    update_homebrew: false
+  environment:
+    HOMEBREW_NO_AUTO_UPDATE: '1'
+
+- name: Preserve the existing desktop application selection
+  community.general.homebrew_cask:
+    name: '{{ workbench_macos_casks }}'
+    state: present
+    accept_external_apps: true
+    update_homebrew: false
+  environment:
+    HOMEBREW_NO_AUTO_UPDATE: '1'
+
+- name: Install macOS container clients
+  community.general.homebrew:
+    name: [colima, docker, docker-compose, podman, lazydocker]
+    state: present
+    update_homebrew: false
+  when: workbench_manage_docker | bool
+
+- name: Check whether the requested Colima VM is running
+  ansible.builtin.command: colima status
+  register: workbench_colima
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - workbench_manage_docker | bool
+    - workbench_macos_start_colima | bool
+
+- name: Start Colima only when explicitly requested
+  ansible.builtin.command: colima start --runtime docker
+  changed_when: true
+  when:
+    - workbench_manage_docker | bool
+    - workbench_macos_start_colima | bool
+    - workbench_colima.rc != 0

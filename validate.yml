@@ -1,0 +1,9 @@
+---
+- name: Evaluate existing workbench hosts without changing configuration
+  hosts: workbench
+  gather_facts: true
+  pre_tasks:
+    - name: Validate target and load its profile
+      ansible.builtin.import_tasks: tasks/preflight.yml
+  roles:
+    - validation

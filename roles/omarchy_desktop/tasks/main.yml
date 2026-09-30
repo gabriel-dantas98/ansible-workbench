@@ -1,0 +1,7 @@
+---
+- name: Install only additional development utilities
+  community.general.pacman:
+    name: '{{ workbench_packages + workbench_extra_packages }}'
+    state: present
+  become: true
+  # Never refresh databases alone (partial upgrades) or run a system upgrade here.

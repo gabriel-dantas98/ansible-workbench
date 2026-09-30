@@ -1,15 +1,35 @@
 ---
-- name: Automate Workbench Installation
-  hosts: localhost
-  connection: local
+- name: Configure the explicitly selected workbench hosts
+  hosts: workbench
+  gather_facts: true
+  pre_tasks:
+    - name: Validate target and load its profile
+      ansible.builtin.import_tasks: tasks/preflight.yml
+  tasks:
+    - name: Configure Ubuntu Server
+      ansible.builtin.include_role:
+        name: ubuntu_server
+      when: workbench_profile == 'ubuntu_server'
 
-  roles:
-    - base
-    - shell
-    - version_managers
-    - containerization
-    - cloud_k8s
-    - languages
-    - editors
-    # - databases (To be implemented)
-    - tools
+    - name: Complement an existing Omarchy desktop
+      ansible.builtin.include_role:
+        name: omarchy_desktop
+      when: workbench_profile == 'omarchy_desktop'
+
+    - name: Configure macOS using Homebrew
+      ansible.builtin.include_role:
+        name: macos
+      when: workbench_profile == 'macos'
+
+    - name: Configure Linux machines for continuous availability
+      ansible.builtin.include_role:
+        name: always_on
+      when: workbench_profile != 'macos'
+
+    - name: Apply policy handlers before functional evaluation
+      ansible.builtin.meta: flush_handlers
+
+    - name: Evaluate the installed profile
+      ansible.builtin.include_role:
+        name: validation
+      when: not ansible_check_mode

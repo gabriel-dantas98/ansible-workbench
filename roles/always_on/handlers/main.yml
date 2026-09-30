@@ -1,0 +1,6 @@
+---
+- name: Reload logind power policy
+  ansible.builtin.command: systemctl kill --kill-whom=main --signal=HUP systemd-logind.service
+  become: true
+  changed_when: true
+  when: workbench_manage_services | bool
