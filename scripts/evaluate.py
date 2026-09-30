@@ -161,6 +161,17 @@ def tailscale_daemon_check(socket=None):
         return result('tailscale_daemon_version', False)
 
 
+def docker_client_checks(profile):
+    checks = [probe('docker_client', ['docker', '--version'])]
+    if profile == 'macos':
+        # Homebrew's standalone binary works without reading private Docker plugin config.
+        checks.append(probe('docker_compose_standalone', ['docker-compose', '--version']))
+    else:
+        checks.append(probe('docker_compose_plugin', ['docker', 'compose', 'version']))
+        checks.append(probe('docker_buildx_plugin', ['docker', 'buildx', 'version']))
+    return checks
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', required=True, choices=['ubuntu_server', 'omarchy_desktop', 'macos'])
@@ -194,10 +205,7 @@ def main():
         checks.append(result('omarchy_installation', any(p.is_file() for p in [
             args.home / '.local/share/omarchy/bin/omarchy-version', Path('/usr/share/omarchy/bin/omarchy-version')])))
     if args.docker:
-        checks.append(probe('docker_client', ['docker', '--version']))
-        checks.append(probe('docker_compose_plugin', ['docker', 'compose', 'version']))
-        if args.profile != 'macos':
-            checks.append(probe('docker_buildx_plugin', ['docker', 'buildx', 'version']))
+        checks.extend(docker_client_checks(args.profile))
         if args.profile == 'macos':
             if args.docker_runtime:
                 # Explicit Colima check, never connect to an inherited cloud Docker context.

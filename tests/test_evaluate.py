@@ -50,6 +50,17 @@ class EvaluationTests(unittest.TestCase):
         with patch.object(self.module, 'run', return_value=completed):
             self.assertEqual(self.module.tailscale_daemon_check()['status'], 'pass')
 
+    def test_macos_compose_does_not_require_private_docker_config(self):
+        self.assertTrue(hasattr(self.module, 'docker_client_checks'), 'platform-specific Compose evaluation missing')
+        if hasattr(self.module, 'docker_client_checks'):
+            def execute(argv):
+                # Fresh Homebrew has a standalone Compose executable but no plugin search config.
+                rc = 1 if argv[:2] == ['docker', 'compose'] else 0
+                return subprocess.CompletedProcess(argv, rc, '', '')
+            with patch.object(self.module, 'run', side_effect=execute):
+                checks = self.module.docker_client_checks('macos')
+            self.assertTrue(all(check['status'] == 'pass' for check in checks))
+
     def test_evaluator_exists(self):
         self.assertTrue(SCRIPT.exists(), 'read-only profile evaluator is missing')
 

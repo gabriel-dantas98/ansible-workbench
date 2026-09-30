@@ -67,7 +67,7 @@ O Docker Ubuntu vem do repositório oficial com chave restrita por `Signed-By`, 
 
 `validate.yml` executa `scripts/evaluate.py` no alvo, sem instalar pacotes nem editar configurações. Ansible ainda usa arquivos temporários para transportar módulos/scripts. O relatório JSON vai ao stdout e contém apenas nomes dos checks e `pass`/`fail`/`skip`; não lista containers, kubecontexts, variáveis de ambiente ou conteúdo de configs pessoais.
 
-Valida plataforma, conta/home, pacotes, comandos, ausência de payloads GUI conhecidos no servidor, Compose/Buildx, serviços quando habilitados, engine local e política 24/7. Qualquer falha retorna código não zero. Não verifica todas as dependências transitivas, aplicações web, workloads ou extensões de IDE. A detecção de GUI é uma lista explícita, não uma prova de ausência de qualquer software gráfico.
+Valida plataforma, conta/home, pacotes, comandos, ausência de payloads GUI conhecidos no servidor, Compose/Buildx nos Linux (Compose standalone no macOS), serviços quando habilitados, engine local e política 24/7. Qualquer falha retorna código não zero. Não verifica todas as dependências transitivas, aplicações web, workloads ou extensões de IDE. A detecção de GUI é uma lista explícita, não uma prova de ausência de qualquer software gráfico.
 
 No primeiro `--check`, a instalação Docker pode ser adiada porque seu repositório ainda não existe. Check-mode não instala e **não comprova funcionamento**. `site.yml` só faz avaliação final depois de apply; rode `validate.yml` separadamente quando quiser avaliar o estado atual.
 
