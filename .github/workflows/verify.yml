@@ -1,0 +1,82 @@
+---
+name: Verify homelab profiles
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install controller test dependencies on the runner only
+        run: |
+          pip install 'ansible-core==2.20.3' 'ansible-lint>=26,<27' 'yamllint>=1.35,<2'
+          ansible-galaxy collection install -r requirements.yml
+      - name: Static and behavioral checks
+        run: |
+          python -m unittest discover -s tests -v
+          yamllint .
+          ansible-lint
+          shellcheck setup.sh tests/container.sh
+          ansible-playbook site.yml --syntax-check
+          ansible-playbook validate.yml --syntax-check
+  containers:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ubuntu24, ubuntu26, arch]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install controller test dependencies on the runner only
+        run: |
+          pip install 'ansible-core==2.20.3'
+          ansible-galaxy collection install -r requirements.yml
+      - name: Real package install, repeat run, check mode and drift detection
+        run: bash tests/container.sh '${{ matrix.target }}'
+      - name: Preserve sanitized test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ matrix.target }}
+          path: artifacts/*.log
+  live_power_policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test controller on disposable runner
+        run: pip install 'ansible-core==2.20.3'
+      - name: Apply and evaluate live systemd policy without sleeping
+        run: |
+          sudo systemctl start systemd-logind.service
+          ansible-playbook -i localhost, -c local tests/power.yml
+          ansible-playbook -i localhost, -c local tests/power.yml | tee /tmp/power-idempotence.log
+          grep -Eq 'changed=0 .*failed=0' /tmp/power-idempotence.log
+          sudo python - <<'PYTHON'
+          import importlib.util
+          import json
+          spec = importlib.util.spec_from_file_location('evaluate', 'scripts/evaluate.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          checks = module.always_on_checks(True)
+          print(json.dumps(checks))
+          assert all(check['status'] == 'pass' for check in checks), checks
+          PYTHON
+      - name: Restore runner policy
+        if: always()
+        run: |
+          ansible-playbook -i localhost, -c local tests/power.yml -e '{"workbench_always_on": false}'
+          test ! -e /etc/systemd/sleep.conf.d/90-ansible-workbench.conf
+          test ! -e /etc/systemd/logind.conf.d/90-ansible-workbench.conf

@@ -1,0 +1,4 @@
+---
+# Additions only: Omarchy owns Docker, its desktop, shell, mise and Neovim.
+workbench_packages: [git-lfs, shellcheck, uv, github-cli, tailscale]
+workbench_commands: [git, git-lfs, jq, rg, tmux, nvim, mise, shellcheck, uv, gh, tailscale, tailscaled]

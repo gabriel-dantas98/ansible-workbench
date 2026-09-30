@@ -1,0 +1,15 @@
+---
+all:
+  children:
+    workbench:
+      hosts:
+        elitedesk:
+          ansible_host: SET_ELITEDESK_IP
+          ansible_user: gabriel
+          workbench_user: gabriel
+          workbench_profile: omarchy_desktop
+        gpu_desktop:
+          ansible_host: SET_DESKTOP_IP
+          ansible_user: gabriel
+          workbench_user: gabriel
+          workbench_profile: omarchy_desktop

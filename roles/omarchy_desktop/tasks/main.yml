@@ -1,0 +1,33 @@
+---
+- name: Refresh and fully upgrade Arch before installing current stable Tailscale
+  community.general.pacman:
+    update_cache: '{{ not ansible_check_mode }}'
+    upgrade: true
+  register: omarchy_desktop_upgrade
+  become: true
+  # Explicit latest-Tailscale requirement: never do pacman -Sy plus a partial upgrade.
+
+- name: Install only additional development utilities
+  community.general.pacman:
+    name: '{{ workbench_packages + workbench_extra_packages }}'
+    state: present
+  become: true
+
+- name: Converge Tailscale to the stable official Arch repository version
+  community.general.pacman:
+    name: extra/tailscale
+    state: latest
+  register: omarchy_desktop_tailscale
+  become: true
+
+- name: Enable Tailscale daemon without authenticating to a tailnet
+  ansible.builtin.systemd_service:
+    name: tailscaled
+    enabled: true
+    state: >-
+      {{ 'restarted' if 'tailscale' in (omarchy_desktop_upgrade.packages | default([]))
+         or omarchy_desktop_tailscale.changed else 'started' }}
+  become: true
+  when:
+    - workbench_manage_services | bool
+    - not ansible_check_mode or not omarchy_desktop_tailscale.changed

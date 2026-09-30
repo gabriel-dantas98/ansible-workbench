@@ -1,0 +1,21 @@
+---
+- name: Install minimal server packages
+  ansible.builtin.apt:
+    name: '{{ workbench_packages + workbench_extra_packages }}'
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    install_recommends: false
+  become: true
+
+- name: Configure native Docker Engine
+  ansible.builtin.include_tasks: docker.yml
+  when: workbench_manage_docker | bool
+
+- name: Enable SSH for subsequent remote access
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: started
+    enabled: true
+  become: true
+  when: workbench_manage_services | bool

@@ -1,0 +1,52 @@
+---
+- name: Create directories for scoped systemd power policy
+  ansible.builtin.file:
+    path: '/etc/systemd/{{ item }}.conf.d'
+    state: directory
+    mode: '0755'
+  loop: [sleep, logind]
+  become: true
+  when: workbench_always_on | bool
+
+- name: Disable systemd sleep operations
+  ansible.builtin.copy:
+    dest: /etc/systemd/sleep.conf.d/90-ansible-workbench.conf
+    mode: '0644'
+    content: |
+      # Managed by ansible-workbench. Screen locking and display power are unaffected.
+      [Sleep]
+      AllowSuspend=no
+      AllowHibernation=no
+      AllowHybridSleep=no
+      AllowSuspendThenHibernate=no
+  become: true
+  when: workbench_always_on | bool
+  notify: Reload logind power policy
+
+- name: Ignore automatic idle and sleep key actions without changing power or reboot keys
+  ansible.builtin.copy:
+    dest: /etc/systemd/logind.conf.d/90-ansible-workbench.conf
+    mode: '0644'
+    content: |
+      # Managed by ansible-workbench. Do not disable the desktop idle/lock manager.
+      [Login]
+      IdleAction=ignore
+      HandleSuspendKey=ignore
+      HandleSuspendKeyLongPress=ignore
+      HandleHibernateKey=ignore
+      HandleHibernateKeyLongPress=ignore
+      HandleLidSwitch=ignore
+      HandleLidSwitchExternalPower=ignore
+      HandleLidSwitchDocked=ignore
+  become: true
+  when: workbench_always_on | bool
+  notify: Reload logind power policy
+
+- name: Remove only workbench policy when always-on is explicitly disabled
+  ansible.builtin.file:
+    path: '/etc/systemd/{{ item }}.conf.d/90-ansible-workbench.conf'
+    state: absent
+  loop: [sleep, logind]
+  become: true
+  when: not workbench_always_on | bool
+  notify: Reload logind power policy

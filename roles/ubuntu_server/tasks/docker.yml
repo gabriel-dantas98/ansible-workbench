@@ -1,0 +1,81 @@
+---
+- name: Resolve Debian architecture
+  ansible.builtin.command: dpkg --print-architecture
+  register: ubuntu_server_deb_arch
+  changed_when: false
+  check_mode: false
+
+- name: Check for conflicting distribution Docker packages
+  ansible.builtin.package_facts:
+    manager: apt
+
+- name: Refuse automatic removal of existing container engines
+  ansible.builtin.assert:
+    that:
+      - >-
+        (ansible_facts.packages.keys() | list |
+         intersect(['docker.io', 'docker-compose', 'docker-compose-v2', 'podman-docker', 'containerd', 'runc'])) | length == 0
+    fail_msg: Existing distribution container packages need explicit migration before Docker CE installation.
+
+- name: Create APT keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Install Docker repository signing key over verified HTTPS
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+  become: true
+
+- name: Configure scoped Docker repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/workbench-docker.sources
+    mode: '0644'
+    content: |
+      Types: deb
+      URIs: https://download.docker.com/linux/ubuntu
+      Suites: {{ ansible_facts.distribution_release }}
+      Components: stable
+      Architectures: {{ ubuntu_server_deb_arch.stdout }}
+      Signed-By: /etc/apt/keyrings/docker.asc
+  register: ubuntu_server_docker_repo
+  become: true
+
+- name: Install Docker and its CLI plugins from the signed repository
+  ansible.builtin.apt:
+    name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+    state: present
+    update_cache: '{{ ubuntu_server_docker_repo.changed }}'
+    install_recommends: false
+  become: true
+  # A fresh --check cannot query packages from a repository it only simulated adding.
+  when: not ansible_check_mode or not ubuntu_server_docker_repo.changed
+
+- name: Explain first-run Docker check-mode limitation
+  ansible.builtin.debug:
+    msg: Docker package resolution is deferred until the repository exists. Run apply and then check again.
+  when: ansible_check_mode and ubuntu_server_docker_repo.changed
+
+- name: Enable Docker Engine
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+  become: true
+  when:
+    - workbench_manage_services | bool
+    - not ansible_check_mode or not ubuntu_server_docker_repo.changed
+
+- name: Grant explicitly requested Docker group access
+  ansible.builtin.user:
+    name: '{{ workbench_user }}'
+    groups: docker
+    append: true
+  become: true
+  when:
+    - workbench_docker_group | bool
+    - not ansible_check_mode or not ubuntu_server_docker_repo.changed

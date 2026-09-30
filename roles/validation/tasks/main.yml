@@ -1,0 +1,29 @@
+---
+- name: Evaluate selected profile with bounded output and no secret collection
+  ansible.builtin.script:
+    cmd: >-
+      {{ playbook_dir }}/scripts/evaluate.py
+      --profile {{ workbench_profile | quote }}
+      {{ '--always-on' if workbench_always_on | bool and workbench_profile != 'macos' else '' }}
+      --home {{ workbench_home | quote }}
+      {{ '--docker' if workbench_manage_docker | bool else '' }}
+      {{ '--services' if workbench_manage_services | bool and workbench_profile != 'macos' else '' }}
+      {{ '--docker-runtime' if workbench_profile == 'macos' and workbench_macos_start_colima | bool else '' }}
+      {{ '--docker-group-user ' ~ (workbench_user | quote) if workbench_docker_group | bool and workbench_profile == 'ubuntu_server' else '' }}
+      {% for package in workbench_packages + workbench_extra_packages %} --package {{ package | quote }}{% endfor %}
+      {% for binary in workbench_commands %} --command {{ binary | quote }}{% endfor %}
+    executable: '{{ ansible_facts.python.executable }}'
+  become: '{{ workbench_profile != "macos" }}'
+  register: validation_evaluation
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Display sanitized evaluation results
+  ansible.builtin.debug:
+    msg: '{{ validation_evaluation.stdout | from_json }}'
+
+- name: Fail on functional drift
+  ansible.builtin.assert:
+    that: validation_evaluation.rc == 0
+    fail_msg: Profile evaluation failed; see sanitized checks above.

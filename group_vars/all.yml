@@ -1,43 +1,11 @@
 ---
-user_home: "{{ lookup('env', 'HOME') }}"
-user_name: "{{ lookup('env', 'USER') }}"
-
-node_version: "22.21.1"
-python_version: "3.13.3"
-ruby_version: "2.6.10"
-golang_version: "1.22.2"
-terraform_version: "1.13.5"
-kubectl_version: "v1.34.0"
-k9s_version: "v0.50.4"
-kind_version: "v0.23.0"
-helm_version: "v3.17.2"
-
-# Paths
-nvm_dir: "{{ user_home }}/.nvm"
-pyenv_root: "{{ user_home }}/.pyenv"
-rbenv_root: "{{ user_home }}/.rbenv"
-pnpm_home: "{{ user_home }}/Library/pnpm"
-bun_install: "{{ user_home }}/.bun"
-
-aliases:
-  dkapitan: "docker run -t -v $(pwd):/src:delegated kapicorp/kapitan"
-  k: "kubectl"
-  kpodcount: "kubectl get pods --all-namespaces | awk '{print $1}' | sort | uniq -c | sort -k1 -n -r"
-  ggwp: "git push"
-  aws_login_forno: "weep export arn:aws:iam::569412621543:role/sso_TechOnCallCloud_staff"
-  aws_login_prod: "weep export arn:aws:iam::632540934959:role/sso_TechOnCallCloud_staff"
-  killkavd: "sudo kill -s SIGKILL $(pgrep kavd)"
-
-extra_paths:
-  - "{{ user_home }}/.krew/bin"
-  - "{{ user_home }}/.bun/bin"
-  - "{{ user_home }}/Library/pnpm"
-  - "{{ user_home }}/.fly/bin"
-  - "{{ user_home }}/.poetry/bin"
-  - "{{ user_home }}/.maestro/bin"
-  - "{{ user_home }}/.pub-cache/bin"
-  - "{{ user_home }}/fvm/default/bin"
-  - "/usr/local/bin"
-  - "{{ user_home }}/.local/bin"
-  - "{{ user_home }}/.antigravity/antigravity/bin"
-  - "{{ user_home }}/.opencode/bin"
+# Per-host profile and existing user are REQUIRED; never inherit controller HOME/USER.
+workbench_allow_local_macos: false
+workbench_manage_services: true
+workbench_manage_docker: true
+# Joining docker grants root-equivalent access. Opt in only for trusted users.
+workbench_docker_group: false
+workbench_extra_packages: []
+workbench_macos_start_colima: false
+# Linux only. false removes our two drop-ins, leaving all other policy intact.
+workbench_always_on: true

@@ -1,0 +1,40 @@
+---
+# Existing macOS package coverage, without replacing dotfiles or starting VMs.
+workbench_packages:
+  - curl
+  - wget
+  - jq
+  - git
+  - git-lfs
+  - unzip
+  - tree
+  - htop
+  - rsync
+  - make
+  - cmake
+  - autoconf
+  - parallel
+  - gnupg
+  - tmux
+  - vim
+  - neovim
+  - ffmpeg
+  - imagemagick
+  - tesseract
+  - pipx
+  - zsh
+  - bash
+  - poetry
+  - go
+  - terraform
+  - kubernetes-cli
+  - helm
+  - awscli
+  - gh
+  - k9s
+  - kind
+  - ripgrep
+  - shellcheck
+  - uv
+workbench_macos_casks: [hyper, visual-studio-code, cursor, spotify, dbeaver-community, discord]
+workbench_commands: [git, jq, zsh, tmux, nvim, rg, uv, poetry, go, terraform, kubectl, helm, aws, gh, k9s, kind]
