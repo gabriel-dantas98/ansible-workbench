@@ -137,7 +137,7 @@ def tailscale_checks():
         metadata = dict((k.strip(), v.strip()) for line in available.stdout.splitlines()
                         if ':' in line for k, v in [line.split(':', 1)])
         parts = installed.stdout.split()
-        checks.append(result('tailscale_latest_stable_repository',
+        checks.append(result('tailscale_matches_local_repository_catalog',
                              installed.returncode == available.returncode == 0 and len(parts) == 2
                              and metadata.get('Repository') == 'extra' and parts[1] == metadata.get('Version')))
     except (OSError, subprocess.TimeoutExpired):
@@ -172,6 +172,10 @@ def docker_client_checks(profile):
     return checks
 
 
+def platform_matches(profile, distro):
+    return distro == 'ubuntu' if profile == 'ubuntu_server' else distro in ['arch', 'omarchy']
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', required=True, choices=['ubuntu_server', 'omarchy_desktop', 'macos'])
@@ -193,7 +197,7 @@ def main():
             distro = release.get('ID', '').strip('"')
         except OSError:
             distro = ''
-        checks.append(result('platform', distro == ('ubuntu' if args.profile == 'ubuntu_server' else 'arch')))
+        checks.append(result('platform', platform_matches(args.profile, distro)))
     # command -v is a shell builtin; fixed positional arguments avoid shell injection.
     for binary in args.command:
         checks.append(probe('command:' + binary, ['sh', '-c', 'command -v "$1" >/dev/null', 'check', binary]))

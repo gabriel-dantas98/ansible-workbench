@@ -22,4 +22,4 @@ Pedido atualizado: preparar Omarchy no HP EliteDesk e no desktop GPU, ambos 24/7
 
 Critério de pronto: código e CI integrados, sem alegar validação de hosts reais. IPs, conta SSH e GPU são informações futuras, não defaults inventados.
 
-Requisito posterior: instalar Tailscale estável atual nos dois Omarchy. Usa extra/tailscale e sincronização + upgrade completo Arch; habilita tailscaled, verifica versão contra o catálogo estável e mantém login na tailnet como etapa interativa, sem auth key.
+Requisito posterior: instalar Tailscale estável atual nos dois Omarchy. Usa tailscale no catálogo configurado pelo Omarchy; instala apenas se ausente, habilita tailscaled sem reiniciar e compara a versão com o catálogo local. Atualizações completas ficam exclusivamente com `omarchy update`, em manutenção separada. Não sincroniza isoladamente, não troca espelhos e não ignora o guard do Omarchy. Login permanece interativo, sem auth key.

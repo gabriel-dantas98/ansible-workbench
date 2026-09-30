@@ -41,16 +41,13 @@ Não há script deste repositório que particione discos, altere BIOS/bootloader
 
 ## 3. Bootstrap de acesso remoto
 
-Em cada Omarchy instalado, no console:
+Use a conta criada na instalação, com sudo. Para este homelab, SSH é exclusivamente pela Tailscale: não habilite sshd na LAN nem abra portas no roteador. Se o Tailscale já estiver instalado e autenticado, preserve essa conexão.
 
-```bash
-sudo pacman -Syu --needed python openssh sudo
-sudo systemctl enable --now sshd
-```
+Em uma instalação nova, faça a manutenção com `omarchy update` pelo console e instale os pré-requisitos ausentes com `omarchy pkg add python sudo tailscale`. Habilite e autentique Tailscale e Tailscale SSH conforme a política da tailnet, pelo fluxo interativo oficial. Não armazene auth keys no repositório.
 
-Use a conta criada na instalação, com sudo. Adicione apenas a **chave pública** do controlador ao `authorized_keys` desse usuário. Confira a identidade SSH no console e permita acesso SSH pela rede de administração confiável caso o firewall local esteja bloqueando; a sub-rede e as regras ainda precisam ser definidas, sem expor portas indiscriminadamente.
+Do controlador, use `tailscale ssh usuario@ip-tailscale` para verificar a identidade. Esse cliente verifica a chave SSH anunciada pelo servidor de coordenação. O inventário privado do Ansible pode usar `ProxyCommand="tailscale nc %h %p"`, `StrictHostKeyChecking=yes` e um arquivo de known_hosts com a chave obtida por esse fluxo autenticado. Nunca use `StrictHostKeyChecking=no` ou aceite uma chave não verificada.
 
-Do controlador, confirme SSH e sudo. Copie `inventories/homelab.example.yml` para `inventories/private.yml`, substitua os dois IPs e usuários reais. Os dois hosts do exemplo usam `omarchy_desktop`; dados privados ficam fora do Git.
+Copie `inventories/homelab.example.yml` para um arquivo `inventories/private*.yml` e mantenha apenas o host que será aplicado, com IP Tailscale e usuário verificados. Confirme hostname, `/etc/os-release` e privilégios antes de qualquer apply. Use `-K` para digitar a senha sudo diretamente no terminal, sem arquivo de senha ou segredo no chat.
 
 ## 4. Provisionamento e avaliação
 
@@ -63,7 +60,7 @@ ansible-playbook -i inventories/private.yml validate.yml --limit elitedesk -K
 # Repita para gpu_desktop depois de instalar/testar o segundo host.
 ```
 
-Consulte o [README](../README.md) para dependências do controlador e variáveis. O perfil preserva a base Omarchy, adiciona ferramentas selecionadas e Tailscale estável atual, e aplica a [política 24/7](always-on.md). Tailscale requer atualização completa dos pacotes Arch para evitar partial upgrade; planeje manutenção e eventual reboot manual após updates.
+Consulte o [README](../README.md) para dependências do controlador e variáveis. O perfil preserva a base Omarchy, adiciona ferramentas selecionadas e Tailscale do canal configurado, e aplica a [política 24/7](always-on.md). Atualizações pertencem a `omarchy update`, executado separadamente em janela de manutenção; a role apenas adiciona pacotes ausentes sem refresh do catálogo e preserva o daemon Tailscale ativo.
 
 Autenticação é separada: execute `sudo tailscale up` no alvo e conclua o login interativo. Não coloque auth key no repo/logs. Confirme conectividade da tailnet antes de trocar o endereço de administração para ela.
 

@@ -1,33 +1,43 @@
 ---
-- name: Refresh and fully upgrade Arch before installing current stable Tailscale
-  community.general.pacman:
-    update_cache: '{{ not ansible_check_mode }}'
-    upgrade: true
-  register: omarchy_desktop_upgrade
-  become: true
-  # Explicit latest-Tailscale requirement: never do pacman -Sy plus a partial upgrade.
+- name: Check pending upgrades without refreshing the Omarchy package database
+  ansible.builtin.command: pacman -Qu
+  register: omarchy_desktop_pending
+  changed_when: false
+  failed_when: omarchy_desktop_pending.rc not in [0, 1]
+  check_mode: false
 
-- name: Install only additional development utilities
+- name: Require supported Omarchy maintenance before adding packages
+  ansible.builtin.assert:
+    that: omarchy_desktop_pending.stdout | trim | length == 0
+    fail_msg: >-
+      Pending upgrades exist in the local package catalog. Run omarchy update from
+      a suitable maintenance console, complete migrations, then retry. This role
+      never refreshes mirrors, runs direct system upgrades or bypasses Omarchy guards.
+
+- name: Install only missing development utilities from the existing Omarchy catalog
   community.general.pacman:
     name: '{{ workbench_packages + workbench_extra_packages }}'
     state: present
+    update_cache: false
+  register: omarchy_desktop_packages
   become: true
 
-- name: Converge Tailscale to the stable official Arch repository version
-  community.general.pacman:
-    name: extra/tailscale
-    state: latest
-  register: omarchy_desktop_tailscale
-  become: true
-
-- name: Enable Tailscale daemon without authenticating to a tailnet
+- name: Enable Tailscale without restarting the authenticated transport
   ansible.builtin.systemd_service:
     name: tailscaled
     enabled: true
-    state: >-
-      {{ 'restarted' if 'tailscale' in (omarchy_desktop_upgrade.packages | default([]))
-         or omarchy_desktop_tailscale.changed else 'started' }}
+    state: started
   become: true
   when:
     - workbench_manage_services | bool
-    - not ansible_check_mode or not omarchy_desktop_tailscale.changed
+    - not ansible_check_mode or not omarchy_desktop_packages.changed
+
+- name: Enable the existing Omarchy Docker service when requested
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+  become: true
+  when:
+    - workbench_manage_services | bool
+    - workbench_manage_docker | bool
