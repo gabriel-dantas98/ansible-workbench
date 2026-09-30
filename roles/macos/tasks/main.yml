@@ -25,7 +25,7 @@
 
 - name: Check whether the requested Colima VM is running
   ansible.builtin.command: colima status
-  register: workbench_colima
+  register: macos_colima
   changed_when: false
   failed_when: false
   check_mode: false
@@ -39,4 +39,4 @@
   when:
     - workbench_manage_docker | bool
     - workbench_macos_start_colima | bool
-    - workbench_colima.rc != 0
+    - macos_colima.rc != 0

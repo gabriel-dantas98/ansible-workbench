@@ -22,7 +22,7 @@ container="workbench-${1}-$$"
 trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
 docker run --name "$container" --detach "$image" sleep infinity >/dev/null
 if [[ $profile == ubuntu_server ]]; then
-  docker exec "$container" sh -c 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 sudo systemd ca-certificates'
+  docker exec "$container" sh -c 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 python3-apt sudo systemd ca-certificates'
 else
   # This is an Arch package fixture, NOT an Omarchy desktop/hardware test.
   docker exec "$container" sh -c 'pacman -Syu --noconfirm --needed python sudo git jq ripgrep tmux neovim mise docker docker-compose docker-buildx'
@@ -53,6 +53,15 @@ grep -Eq 'changed=0 .*failed=0' artifacts/idempotence.log
 ansible-playbook -i artifacts/inventory.yml site.yml --check | tee artifacts/check-after.log
 grep -Eq 'changed=0 .*failed=0' artifacts/check-after.log
 ansible-playbook -i artifacts/inventory.yml validate.yml | tee artifacts/evaluation.log
+if [[ $profile == omarchy_desktop ]]; then
+  # Exercise the real daemon without a TUN device, host privileges or tailnet auth.
+  docker exec --detach "$container" tailscaled --tun=userspace-networking --state=mem: --socket=/tmp/workbench-tailscaled.sock
+  for _attempt in {1..20}; do
+    if docker exec "$container" test -S /tmp/workbench-tailscaled.sock; then break; fi
+    sleep 1
+  done
+  docker exec "$container" python3 -c 'import json,subprocess; p=subprocess.run(["tailscale","--socket=/tmp/workbench-tailscaled.sock","status","--json"],capture_output=True,text=True); s=json.loads(p.stdout); assert s["BackendState"] == "NeedsLogin"; print("Tailscale daemon operational; authentication pending")'
+fi
 # Power policy must be reversible, and disabling it must not rewrite desktop files.
 ansible-playbook -i artifacts/inventory.yml site.yml -e '{"workbench_always_on": false}' | tee artifacts/power-disable.log
 docker exec "$container" sh -c 'test ! -e /etc/systemd/sleep.conf.d/90-ansible-workbench.conf && test ! -e /etc/systemd/logind.conf.d/90-ansible-workbench.conf'

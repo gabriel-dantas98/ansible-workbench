@@ -14,16 +14,16 @@
       {% for binary in workbench_commands %} --command {{ binary | quote }}{% endfor %}
     executable: '{{ ansible_facts.python.executable }}'
   become: '{{ workbench_profile != "macos" }}'
-  register: workbench_evaluation
+  register: validation_evaluation
   changed_when: false
   failed_when: false
   check_mode: false
 
 - name: Display sanitized evaluation results
   ansible.builtin.debug:
-    msg: '{{ workbench_evaluation.stdout | from_json }}'
+    msg: '{{ validation_evaluation.stdout | from_json }}'
 
 - name: Fail on functional drift
   ansible.builtin.assert:
-    that: workbench_evaluation.rc == 0
+    that: validation_evaluation.rc == 0
     fail_msg: Profile evaluation failed; see sanitized checks above.

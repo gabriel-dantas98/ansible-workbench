@@ -1,7 +1,7 @@
 ---
 - name: Resolve Debian architecture
   ansible.builtin.command: dpkg --print-architecture
-  register: workbench_deb_arch
+  register: ubuntu_server_deb_arch
   changed_when: false
   check_mode: false
 
@@ -40,25 +40,25 @@
       URIs: https://download.docker.com/linux/ubuntu
       Suites: {{ ansible_facts.distribution_release }}
       Components: stable
-      Architectures: {{ workbench_deb_arch.stdout }}
+      Architectures: {{ ubuntu_server_deb_arch.stdout }}
       Signed-By: /etc/apt/keyrings/docker.asc
-  register: workbench_docker_repo
+  register: ubuntu_server_docker_repo
   become: true
 
 - name: Install Docker and its CLI plugins from the signed repository
   ansible.builtin.apt:
     name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
     state: present
-    update_cache: '{{ workbench_docker_repo.changed }}'
+    update_cache: '{{ ubuntu_server_docker_repo.changed }}'
     install_recommends: false
   become: true
   # A fresh --check cannot query packages from a repository it only simulated adding.
-  when: not ansible_check_mode or not workbench_docker_repo.changed
+  when: not ansible_check_mode or not ubuntu_server_docker_repo.changed
 
 - name: Explain first-run Docker check-mode limitation
   ansible.builtin.debug:
     msg: Docker package resolution is deferred until the repository exists. Run apply and then check again.
-  when: ansible_check_mode and workbench_docker_repo.changed
+  when: ansible_check_mode and ubuntu_server_docker_repo.changed
 
 - name: Enable Docker Engine
   ansible.builtin.systemd_service:
@@ -68,7 +68,7 @@
   become: true
   when:
     - workbench_manage_services | bool
-    - not ansible_check_mode or not workbench_docker_repo.changed
+    - not ansible_check_mode or not ubuntu_server_docker_repo.changed
 
 - name: Grant explicitly requested Docker group access
   ansible.builtin.user:
@@ -78,4 +78,4 @@
   become: true
   when:
     - workbench_docker_group | bool
-    - not ansible_check_mode or not workbench_docker_repo.changed
+    - not ansible_check_mode or not ubuntu_server_docker_repo.changed

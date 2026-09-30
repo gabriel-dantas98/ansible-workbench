@@ -122,6 +122,31 @@ def always_on_checks(services):
     return checks
 
 
+def tailscale_checks():
+    checks = []
+    try:
+        completed = run(['tailscale', 'version'])
+        first = completed.stdout.splitlines()[0] if completed.stdout else ''
+        valid = completed.returncode == 0 and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', first) is not None
+        check = result('tailscale_version', valid)
+        if valid:
+            check['version'] = first
+        checks.append(check)
+        installed = run(['pacman', '-Q', 'tailscale'])
+        available = run(['pacman', '-Si', 'extra/tailscale'])
+        metadata = dict((k.strip(), v.strip()) for line in available.stdout.splitlines()
+                        if ':' in line for k, v in [line.split(':', 1)])
+        parts = installed.stdout.split()
+        checks.append(result('tailscale_latest_stable_repository',
+                             installed.returncode == available.returncode == 0 and len(parts) == 2
+                             and metadata.get('Repository') == 'extra' and parts[1] == metadata.get('Version')))
+    except (OSError, subprocess.TimeoutExpired):
+        checks.append(result('tailscale_installation', False))
+    # Authentication is deliberately separate; no auth state, peer list or keys are read.
+    checks.append({'name': 'tailscale_tailnet_authentication', 'status': 'skip'})
+    return checks
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', required=True, choices=['ubuntu_server', 'omarchy_desktop', 'macos'])
@@ -174,6 +199,8 @@ def main():
         services = ['ssh'] if args.profile == 'ubuntu_server' else []
         if args.docker:
             services.append('docker')
+        if args.profile == 'omarchy_desktop':
+            services.append('tailscaled')
         for service in services:
             checks.append(probe('service_active:' + service, ['systemctl', 'is-active', '--quiet', service]))
             checks.append(probe('service_enabled:' + service, ['systemctl', 'is-enabled', '--quiet', service]))
@@ -187,6 +214,8 @@ def main():
         except KeyError:
             member = False
         checks.append(result('docker_group_membership', member))
+    if args.profile == 'omarchy_desktop':
+        checks.extend(tailscale_checks())
     if args.always_on:
         checks.extend(always_on_checks(args.services))
     print(json.dumps({'profile': args.profile, 'checks': checks}, sort_keys=True))
