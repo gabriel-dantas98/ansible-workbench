@@ -23,7 +23,8 @@ jobs:
           python -m unittest discover -s tests -v
           yamllint .
           ansible-lint
-          shellcheck setup.sh tests/container.sh
+          shellcheck setup.sh tests/container.sh scripts/install-hermes-user.sh
+          bash -n scripts/install-hermes-user.sh
           ansible-playbook site.yml --syntax-check
           ansible-playbook validate.yml --syntax-check
   containers:
