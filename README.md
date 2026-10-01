@@ -86,3 +86,5 @@ Veja [auditoria e escopo](docs/audit-2026-09-30.md) e [decisões de implementaç
 O controlador usa SSH sem PTY (`usetty=False`). Sessões sudo com `pam_systemd` recente podem emitir sequências OSC 3008 num terminal, contaminando o JSON dos módulos e do avaliador. A correção evita alocar esse terminal; mantém autenticação sudo, PAM e parsing JSON estrito. Não altere sudoers nem remova caracteres arbitrariamente do relatório.
 
 Para preview, execute `ansible-playbook ... --check -K` como comando separado. Não use `check_mode` em `import_playbook` para simular a opção CLI: o runner anterior não propagou essa intenção e aplicou alterações na primeira execução.
+
+Setup opcional por usuário: [Hermes Agent](docs/hermes.md), com revisão fixada, venv isolado e launcher separado do Omarchy.
